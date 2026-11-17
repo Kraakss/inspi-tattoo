@@ -171,12 +171,14 @@ if (!lireCle()) $("reglages").style.display = "block";
 // ---------- Appel IA (réponse en flux : les mots arrivent un par un) ----------
 function construirePrompt(mot, exclus) {
   let p = `Une tatoueuse cherche l'inspiration pour dessiner le concept : « ${mot} ».
-Méthode : repère d'abord les facettes du concept (son sens, ses émotions, ses symboles, son image culturelle, son contraire), puis propose 20 éléments concrets et dessinables (objets, animaux, plantes, lieux, symboles, phénomènes…) qui se rattachent à ces facettes.
+Méthode : repère d'abord les facettes du concept (son sens, ses émotions, ses symboles, sa dimension philosophique ou spirituelle, son image culturelle, son contraire), puis propose 20 éléments concrets et dessinables qui se rattachent à ces facettes.
 Règles :
-- RAPPORT OBLIGATOIRE : chaque élément a un lien réel avec une facette du concept, explicable en une courte phrase à un client. Un élément sans lien clair est interdit : remplace-le. Le lien peut être indirect ou symbolique, jamais inexistant.
+- BEAU À TATOUER : chaque élément doit faire un beau tatouage, avec une silhouette forte et reconnaissable et une charge symbolique ou poétique (animaux, plantes, fleurs, astres, créatures et figures mythologiques, symboles anciens, objets chargés de sens, éléments naturels, architectures emblématiques). INTERDIT : les métiers, les personnes, les objets banals ou techniques, les marques, les notions abstraites impossibles à dessiner. Exemple : pour « herbe », pas « jardinier » mais « pissenlit en graines » ou « faucille ».
+- PROFONDEUR : au moins 6 éléments portent un sens philosophique, spirituel ou mythologique (cycle, dualité, renaissance, passage du temps, équilibre, fragilité, sacrifice, quête…).
+- RAPPORT OBLIGATOIRE : chaque élément a un lien réel avec une facette du concept, explicable en une phrase à un client. Un élément sans lien clair est interdit : remplace-le. Le lien peut être indirect ou symbolique, jamais inexistant.
 - Dosage : 4 liens directs et évidents, 10 liens symboliques ou culturels, 6 liens plus lointains mais justifiables.
-- Variété : au moins 14 catégories différentes (nature, mythologie, architecture, cuisine, marine, astronomie, métiers, sport, musique, histoire, sciences, objets du quotidien, outils, météo, jeux…).
-- "lien" : pourquoi cet élément évoque le concept (4 à 9 mots). "mot" : 1 à 3 mots en français, sans doublon. "categorie" : 1 ou 2 mots.`;
+- Variété : au moins 14 catégories différentes (nature, mythologie, astronomie, marine, architecture, musique, histoire, sciences, symboles anciens, météo, alchimie, jeux…).
+- "lien" : le sens ou le rapport avec le concept (4 à 10 mots), de préférence le sens symbolique. "mot" : 1 à 3 mots en français, sans doublon. "categorie" : 1 ou 2 mots.`;
   if (exclus.length) p += `\n- Ne répète pas : ${exclus.join(", ")}.`;
   p += `\nRéponds uniquement par un tableau JSON, clés dans cet ordre : [{"lien":"...","mot":"...","categorie":"..."}]`;
   return p;
