@@ -83,6 +83,11 @@ $("btn-cle").onclick = () => {
   const v = $("cle").value.trim();
   if (v) { ecrireCle(v); $("cle").value = ""; $("reglages").style.display = "none"; statut("Clé enregistrée ✔"); }
 };
+// Lien d'activation : https://.../#cle=XXXX enregistre la clé puis l'efface de l'adresse
+try {
+  const m = location.hash.match(/cle=([^&]+)/);
+  if (m) { ecrireCle(decodeURIComponent(m[1])); history.replaceState(null, "", location.pathname + location.search); statut("Clé enregistrée ✔"); }
+} catch (e) {}
 if (!lireCle()) $("reglages").style.display = "block";
 
 // ---------- Appel IA ----------
