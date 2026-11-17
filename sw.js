@@ -1,4 +1,4 @@
-const CACHE = "inspi-tattoo-v2";
+const CACHE = "inspi-tattoo-v3";
 const FICHIERS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {

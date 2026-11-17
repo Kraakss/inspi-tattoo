@@ -7,82 +7,158 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://generativelanguage.googleapis.com">
 <title>Inspi Tattoo</title>
 <style>
   :root { --fond:#0f0d0c; --carte:#1b1816; --texte:#f1e9dc; --doux:#9d9183; --or:#c9a35b; --bord:#2e2925; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   body { margin:0; background:var(--fond); color:var(--texte); font-family:Georgia,"Times New Roman",serif;
-         min-height:100vh; padding:env(safe-area-inset-top) 16px 40px; }
+         min-height:100vh; padding:env(safe-area-inset-top) 16px 90px; }
   header { display:flex; align-items:center; justify-content:space-between; padding:18px 0 6px; }
   h1 { font-size:1.5rem; font-weight:normal; letter-spacing:.08em; margin:0; color:var(--or); }
-  #btn-reglages { background:none; border:none; color:var(--doux); font-size:1.5rem; padding:8px; }
+  .actions button { background:none; border:none; color:var(--doux); font-size:1.4rem; padding:8px; }
   .sous-titre { color:var(--doux); font-size:.95rem; margin:0 0 18px; }
   form { display:flex; gap:8px; }
   input[type=text], input[type=password] { flex:1; min-width:0; background:var(--carte); border:1px solid var(--bord);
          color:var(--texte); border-radius:12px; padding:14px; font-size:1.1rem; font-family:inherit; }
   input:focus { outline:none; border-color:var(--or); }
   button.principal { background:var(--or); color:#1a1508; border:none; border-radius:12px; padding:0 20px;
-         font-size:1rem; font-weight:bold; font-family:inherit; }
-  button.principal:disabled { opacity:.5; }
-  #statut { color:var(--doux); text-align:center; margin:22px 0; min-height:1.4em; }
+         font-size:1rem; font-weight:bold; font-family:inherit; min-width:104px; }
+  button.principal:disabled { opacity:.6; }
+  #statut { color:var(--doux); text-align:center; margin:16px 0 4px; min-height:1.4em; font-size:.95rem; }
   #statut.erreur { color:#e0806f; }
-  ul { list-style:none; padding:0; margin:14px 0; display:grid; gap:8px; }
+  ul { list-style:none; padding:0; margin:10px 0; display:grid; gap:8px; }
   li { background:var(--carte); border:1px solid var(--bord); border-radius:12px; padding:12px 14px;
        display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  li.entree { animation:monte .35s ease both; }
   li.choisi { border-color:var(--or); background:#26201a; }
   .mot { font-size:1.2rem; }
   .cat { font-size:.78rem; color:var(--or); border:1px solid var(--bord); border-radius:99px; padding:3px 10px; white-space:nowrap; }
-  #encore { display:none; width:100%; margin-top:6px; background:none; color:var(--or); border:1px solid var(--or);
-            border-radius:12px; padding:14px; font-size:1rem; font-family:inherit; }
-  #reglages { display:none; background:var(--carte); border:1px solid var(--bord); border-radius:12px; padding:14px; margin-bottom:16px; }
-  #reglages label { display:block; color:var(--doux); font-size:.9rem; margin-bottom:8px; }
-  #reglages .ligne { display:flex; gap:8px; }
+  @keyframes monte { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
+  /* chargement : cartes fantômes */
+  li.sk { height:50px; border-color:transparent; background:linear-gradient(100deg,#1b1816 30%,#2a2420 50%,#1b1816 70%);
+          background-size:200% 100%; animation:brille 1.2s linear infinite; }
+  @keyframes brille { from { background-position:100% 0; } to { background-position:-100% 0; } }
+
+  /* barre série */
+  #resultats { display:none; scroll-margin-top:8px; }
+  #pager { display:flex; align-items:center; gap:8px; margin-top:10px; }
+  #pager button { background:var(--carte); border:1px solid var(--bord); color:var(--or); border-radius:10px;
+                  width:44px; height:40px; font-size:1.1rem; }
+  #pager button:disabled { opacity:.3; }
+  #pager-txt { flex:1; text-align:center; color:var(--doux); font-size:.95rem; }
+  #pager-txt b { color:var(--texte); font-weight:normal; font-size:1.05rem; }
+
+  /* bouton Encore, toujours accessible en bas */
+  #zone-encore { position:sticky; bottom:0; padding:14px 0 calc(14px + env(safe-area-inset-bottom));
+                 background:linear-gradient(transparent, var(--fond) 35%); margin-top:6px; }
+  #encore { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:var(--or);
+            color:#1a1508; border:none; border-radius:14px; padding:16px; font-size:1.05rem; font-weight:bold; font-family:inherit;
+            box-shadow:0 6px 20px rgba(0,0,0,.5); transition:transform .1s; }
+  #encore:active { transform:scale(.97); }
+  #encore.charge { background:#3a3128; color:var(--or); }
+  .spin { display:none; width:18px; height:18px; border:3px solid rgba(201,163,91,.3); border-top-color:var(--or);
+          border-radius:50%; animation:tourne .8s linear infinite; }
+  .charge .spin, button.principal.charge .spin { display:inline-block; }
+  button.principal .spin { border-color:rgba(26,21,8,.3); border-top-color:#1a1508; width:14px; height:14px; border-width:2px; }
+  button.principal { display:flex; align-items:center; justify-content:center; gap:8px; }
+  @keyframes tourne { to { transform:rotate(360deg); } }
+
+  /* panneaux */
+  .panneau { display:none; background:var(--carte); border:1px solid var(--bord); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .panneau label { display:block; color:var(--doux); font-size:.9rem; margin-bottom:8px; }
+  .panneau .ligne { display:flex; gap:8px; }
   .aide { color:var(--doux); font-size:.8rem; margin:10px 0 0; line-height:1.4; }
+  .histo-tete { display:flex; justify-content:space-between; align-items:center; color:var(--or); margin-bottom:6px; }
+  .histo-tete button { background:none; border:none; color:var(--doux); font-size:1.1rem; padding:4px 8px; }
+  #histo-liste li { background:var(--fond); }
+  #histo-liste .info { display:flex; flex-direction:column; gap:2px; }
+  #histo-liste .sous { font-size:.78rem; color:var(--doux); }
+  #histo-liste .suppr { background:none; border:none; color:var(--doux); font-size:1rem; padding:6px 8px; }
 </style>
 </head>
 <body>
 <header>
   <h1>INSPI TATTOO</h1>
-  <button id="btn-reglages" aria-label="Réglages">⚙</button>
+  <div class="actions">
+    <button id="btn-histo" aria-label="Historique">🕘</button>
+    <button id="btn-reglages" aria-label="Réglages">⚙</button>
+  </div>
 </header>
 <p class="sous-titre">Un mot, des idées de dessins venues de partout.</p>
 
-<div id="reglages">
+<div id="reglages" class="panneau">
   <label for="cle">Clé Gemini gratuite (à saisir une seule fois, reste sur ce téléphone)</label>
   <div class="ligne">
     <input type="password" id="cle" placeholder="AIza..." autocomplete="off">
-    <button class="principal" id="btn-cle" type="button">OK</button>
+    <button class="principal" id="btn-cle" type="button" style="min-width:60px">OK</button>
   </div>
   <p class="aide">Gratuite : aistudio.google.com/apikey</p>
 </div>
 
+<div id="histo" class="panneau">
+  <div class="histo-tete"><b>Recherches précédentes</b><button id="btn-histo-fermer" aria-label="Fermer">✕</button></div>
+  <ul id="histo-liste"></ul>
+</div>
+
 <form id="form">
   <input type="text" id="mot" placeholder="force, courage, sagesse…" autocomplete="off" autocapitalize="none" enterkeyhint="search">
-  <button class="principal" id="btn-go" type="submit">Chercher</button>
+  <button class="principal" id="btn-go" type="submit"><span class="spin"></span><span id="go-txt">Chercher</span></button>
 </form>
 
 <div id="statut"></div>
-<ul id="liste"></ul>
-<button id="encore">Encore des idées</button>
+
+<div id="resultats">
+  <div id="pager">
+    <button id="prec" aria-label="Série précédente">◀</button>
+    <div id="pager-txt"></div>
+    <button id="suiv" aria-label="Série suivante">▶</button>
+  </div>
+  <ul id="liste"></ul>
+  <div id="zone-encore">
+    <button id="encore"><span class="spin"></span><span id="encore-txt">Encore des idées</span></button>
+  </div>
+</div>
 
 <script>
-const MODELES = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
 const $ = id => document.getElementById(id);
-let motCourant = "";
-let dejaVus = [];
+const URL_API = "https://generativelanguage.googleapis.com/v1beta/models/";
+const MODELES = ["gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+
+let recherche = null;   // { id, mot, batches: [[{mot, categorie, choisi}]], index }
+let enCours = false;
+
+// ---------- Stockage ----------
+function lire(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+function ecrire(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lireHisto() { try { return JSON.parse(lire("historique") || "[]"); } catch (e) { return []; } }
+function sauver() {
+  if (!recherche || !recherche.batches.length) return;
+  recherche.date = Date.now();
+  let h = lireHisto().filter(x => x.id !== recherche.id);
+  h.unshift(recherche);
+  ecrire("historique", JSON.stringify(h.slice(0, 30)));
+}
 
 // ---------- Clé API ----------
-function lireCle() { try { return localStorage.getItem("cle_api") || ""; } catch (e) { return ""; } }
-function ecrireCle(v) { try { localStorage.setItem("cle_api", v); } catch (e) {} }
+function lireCle() { return lire("cle_api"); }
+function ecrireCle(v) { ecrire("cle_api", v); }
 
-$("btn-reglages").onclick = () => {
-  const r = $("reglages");
-  r.style.display = r.style.display === "block" ? "none" : "block";
-};
+function basculer(id) {
+  const autres = ["reglages", "histo"].filter(x => x !== id);
+  autres.forEach(x => $(x).style.display = "none");
+  const p = $(id);
+  p.style.display = p.style.display === "block" ? "none" : "block";
+}
+$("btn-reglages").onclick = () => basculer("reglages");
+$("btn-histo").onclick = () => { afficherHisto(); basculer("histo"); };
+$("btn-histo-fermer").onclick = () => $("histo").style.display = "none";
 $("btn-cle").onclick = () => {
   const v = $("cle").value.trim();
   if (v) { ecrireCle(v); $("cle").value = ""; $("reglages").style.display = "none"; statut("Clé enregistrée ✔"); }
 };
+
 // Lien d'activation : https://.../#cle=XXXX enregistre la clé puis l'efface de l'adresse
 try {
   const m = location.hash.match(/cle=([^&]+)/);
@@ -90,103 +166,234 @@ try {
 } catch (e) {}
 if (!lireCle()) $("reglages").style.display = "block";
 
-// ---------- Appel IA ----------
+// ---------- Appel IA (réponse en flux : les mots arrivent un par un) ----------
 function construirePrompt(mot, exclus) {
   let p = `Une tatoueuse cherche l'inspiration pour dessiner le concept : « ${mot} ».
-Donne 20 éléments concrets (objets, animaux, plantes, lieux, symboles, phénomènes…) que l'on peut dessiner et qui se rapprochent de ce concept, de près ou de loin.
-
+Donne 20 éléments concrets et dessinables (objets, animaux, plantes, lieux, symboles, phénomènes…) liés à ce concept, de près ou de loin.
 Règles :
-- Maximum 3 éléments évidents (ceux auxquels tout le monde pense). Le reste doit surprendre, tout en restant justifiable.
-- Pioche dans un maximum de domaines différents : nature, animaux, mythologie, architecture, cuisine, marine, astronomie, métiers, sport, musique, histoire, sciences, objets du quotidien, outils, météo, jeux, etc. Au moins 14 catégories différentes sur les 20 éléments.
-- Chaque élément = un mot ou une courte expression (3 mots maximum), en français, sans doublon.
-- La catégorie = 1 ou 2 mots.`;
-  if (exclus.length) p += `\n- Ne répète surtout pas ceux-ci : ${exclus.join(", ")}.`;
-  p += `\n\nRéponds UNIQUEMENT avec un tableau JSON, sans aucun autre texte :
-[{"mot":"...","categorie":"..."}]`;
+- 3 évidents maximum, le reste doit surprendre tout en restant justifiable.
+- Un maximum de domaines différents (nature, mythologie, architecture, cuisine, marine, astronomie, métiers, sport, musique, histoire, sciences, objets du quotidien, outils, météo, jeux…), au moins 14 catégories différentes.
+- Chaque élément : 1 à 3 mots en français, sans doublon. Catégorie : 1 ou 2 mots.`;
+  if (exclus.length) p += `\n- Ne répète pas : ${exclus.join(", ")}.`;
+  p += `\nRéponds uniquement par un tableau JSON : [{"mot":"...","categorie":"..."}]`;
   return p;
 }
 
-function extraireListe(texte) {
-  const debut = texte.indexOf("["), fin = texte.lastIndexOf("]");
-  if (debut === -1 || fin === -1) throw new Error("Réponse illisible");
-  const data = JSON.parse(texte.slice(debut, fin + 1));
-  return data
-    .filter(x => x && typeof x.mot === "string" && x.mot.trim())
-    .map(x => ({ mot: x.mot.trim(), categorie: String(x.categorie || "").trim() }));
+function listeModeles() {
+  const ok = lire("modele_ok");
+  return ok && MODELES.includes(ok) ? [ok].concat(MODELES.filter(m => m !== ok)) : MODELES;
 }
 
-async function appelModele(modele, mot, exclus) {
-  const rep = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modele + ":generateContent", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": lireCle() },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: construirePrompt(mot, exclus) }] }],
-      generationConfig: { temperature: 1, maxOutputTokens: 2000, responseMimeType: "application/json",
-                          thinkingConfig: { thinkingBudget: 0 } }
-    })
-  });
-  return rep;
+async function lireFlux(rep, onItem) {
+  let texte = "", fait = 0;
+  const re = /\{\s*"mot"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"categorie"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g;
+  const extraire = () => {
+    re.lastIndex = 0;
+    let m, n = 0;
+    while ((m = re.exec(texte)) !== null) {
+      n++;
+      if (n > fait) {
+        fait = n;
+        try { onItem({ mot: JSON.parse('"' + m[1] + '"').trim(), categorie: JSON.parse('"' + m[2] + '"').trim() }); } catch (e) {}
+      }
+    }
+  };
+  const ligne = l => {
+    l = l.trim();
+    if (!l.startsWith("data:")) return;
+    try {
+      const j = JSON.parse(l.slice(5));
+      const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+      texte += parts.map(p => p.text || "").join("");
+      extraire();
+    } catch (e) {}
+  };
+  if (!rep.body || !rep.body.getReader) { (await rep.text()).split("\n").forEach(ligne); return; }
+  const lecteur = rep.body.getReader(), dec = new TextDecoder();
+  let tampon = "";
+  while (true) {
+    const { done, value } = await lecteur.read();
+    if (done) break;
+    tampon += dec.decode(value, { stream: true });
+    const lignes = tampon.split("\n");
+    tampon = lignes.pop();
+    lignes.forEach(ligne);
+  }
+  if (tampon) ligne(tampon);
 }
 
-async function demanderIdees(mot, exclus) {
-  let derniere = null;
-  for (const modele of MODELES) {
-    let rep = await appelModele(modele, mot, exclus);
-    if (rep.status === 400 || rep.status === 403) {
-      // clé refusée ou option non supportée : on le dit clairement si c'est la clé
+async function streamIdees(mot, exclus, onItem) {
+  let derniere = 0;
+  for (const modele of listeModeles()) {
+    const gen = { temperature: 1, maxOutputTokens: 1500, responseMimeType: "application/json" };
+    if (modele === "gemini-2.5-flash") gen.thinkingConfig = { thinkingBudget: 0 };
+    const rep = await fetch(URL_API + modele + ":streamGenerateContent?alt=sse", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": lireCle() },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: construirePrompt(mot, exclus) }] }], generationConfig: gen })
+    });
+    if (!rep.ok) {
       const txt = await rep.text();
       if (/API key|API_KEY/i.test(txt)) throw new Error("Clé refusée. Vérifie-la dans ⚙.");
-      derniere = rep; continue;
+      derniere = rep.status;
+      continue;
     }
-    if (rep.status === 404 || rep.status === 429 || rep.status >= 500) { derniere = rep; continue; }
-    if (!rep.ok) throw new Error("Erreur du service (" + rep.status + ")");
-    const json = await rep.json();
-    const parts = (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) || [];
-    const texte = parts.map(p => p.text || "").join("");
-    return extraireListe(texte);
+    ecrire("modele_ok", modele);
+    await lireFlux(rep, onItem);
+    return;
   }
-  if (derniere && derniere.status === 429) throw new Error("Limite gratuite atteinte pour le moment, réessaie dans une minute.");
-  throw new Error("Service indisponible (" + (derniere ? derniere.status : "?") + ")");
+  if (derniere === 429) throw new Error("Limite gratuite atteinte pour le moment, réessaie dans une minute.");
+  throw new Error("Service indisponible (" + derniere + ")");
 }
 
 // ---------- Affichage ----------
 function statut(msg, erreur) { const s = $("statut"); s.textContent = msg || ""; s.className = erreur ? "erreur" : ""; }
 
-function afficher(items) {
-  const ul = $("liste");
-  items.forEach(({ mot, categorie }) => {
+function creerCarte(item) {
+  const li = document.createElement("li");
+  li.className = "entree" + (item.choisi ? " choisi" : "");
+  const m = document.createElement("span"); m.className = "mot"; m.textContent = item.mot;
+  const c = document.createElement("span"); c.className = "cat"; c.textContent = item.categorie;
+  li.append(m, c);
+  li.onclick = () => { item.choisi = !item.choisi; li.classList.toggle("choisi", item.choisi); sauver(); };
+  return li;
+}
+
+function ajouterCarte(item) {
+  const liste = $("liste");
+  const sks = liste.querySelectorAll(".sk");
+  liste.insertBefore(creerCarte(item), sks[0] || null);
+  if (sks.length) sks[sks.length - 1].remove();
+}
+
+function majPager() {
+  const r = recherche, n = r ? r.batches.length : 0;
+  $("pager-txt").innerHTML = "";
+  if (!r) return;
+  const b = document.createElement("b"); b.textContent = "« " + r.mot + " »";
+  $("pager-txt").append(b, document.createTextNode(n > 1 ? "  ·  série " + (r.index + 1) + "/" + n : ""));
+  $("prec").disabled = enCours || r.index <= 0;
+  $("suiv").disabled = enCours || r.index >= n - 1;
+}
+
+function afficherSerie() {
+  const liste = $("liste");
+  liste.innerHTML = "";
+  if (!recherche || !recherche.batches.length) { $("resultats").style.display = "none"; majPager(); return; }
+  $("resultats").style.display = "block";
+  recherche.batches[recherche.index].forEach(it => liste.appendChild(creerCarte(it)));
+  majPager();
+}
+
+function etatChargement(charge) {
+  enCours = charge;
+  $("encore").classList.toggle("charge", charge);
+  $("encore").disabled = charge;
+  $("encore-txt").textContent = charge ? "Recherche en cours…" : "Encore des idées";
+  $("btn-go").classList.toggle("charge", charge);
+  $("btn-go").disabled = charge;
+  $("go-txt").textContent = charge ? "Recherche" : "Chercher";
+  majPager();
+}
+
+function messageErreur(e) {
+  return (!navigator.onLine || e instanceof TypeError) ? "Pas de connexion internet." : e.message;
+}
+
+async function lancer(nouvelle) {
+  if (enCours) return;
+  const mot = nouvelle ? $("mot").value.trim() : (recherche && recherche.mot);
+  if (!mot) return;
+  if (!lireCle()) { $("reglages").style.display = "block"; statut("Ajoute d'abord ta clé dans ⚙", true); return; }
+  if (navigator.vibrate) navigator.vibrate(15);
+
+  const ancienne = recherche;
+  const cible = nouvelle ? { id: Date.now(), mot, batches: [], index: -1 } : recherche;
+  const exclus = [].concat(...cible.batches.map(b => b.map(i => i.mot)));
+  const vus = new Set(exclus.map(x => x.toLowerCase()));
+  const lot = [];
+  cible.batches.push(lot);
+  cible.index = cible.batches.length - 1;
+  recherche = cible;
+  $("histo").style.display = "none";
+
+  // l'écran change tout de suite : anciens mots remplacés par des cartes de chargement
+  $("resultats").style.display = "block";
+  const liste = $("liste");
+  liste.innerHTML = "";
+  for (let i = 0; i < 8; i++) { const sk = document.createElement("li"); sk.className = "sk"; liste.appendChild(sk); }
+  etatChargement(true);
+  statut("Recherche d'idées…");
+  $("resultats").scrollIntoView({ behavior: "smooth", block: "start" });
+
+  try {
+    await streamIdees(mot, exclus, item => {
+      const cle = item.mot.toLowerCase();
+      if (!item.mot || vus.has(cle)) return;
+      vus.add(cle);
+      item.choisi = false;
+      lot.push(item);
+      ajouterCarte(item);
+    });
+    if (!lot.length) throw new Error("Aucune idée trouvée, réessaie.");
+    sauver();
+    statut("Touche un mot pour le mettre de côté.");
+  } catch (e) {
+    if (!lot.length) {
+      cible.batches.pop();
+      cible.index = cible.batches.length - 1;
+      if (!cible.batches.length) recherche = ancienne;
+    } else { sauver(); }
+    statut(messageErreur(e), true);
+  } finally {
+    liste.querySelectorAll(".sk").forEach(s => s.remove());
+    etatChargement(false);
+    if (!lot.length) afficherSerie();
+  }
+}
+
+// ---------- Séries et historique ----------
+function changerSerie(d) {
+  if (enCours || !recherche) return;
+  const i = recherche.index + d;
+  if (i < 0 || i >= recherche.batches.length) return;
+  recherche.index = i;
+  afficherSerie();
+  statut("");
+}
+
+function afficherHisto() {
+  const ul = $("histo-liste");
+  ul.innerHTML = "";
+  const h = lireHisto();
+  if (!h.length) { const li = document.createElement("li"); li.textContent = "Aucune recherche pour le moment."; ul.appendChild(li); return; }
+  h.forEach(r => {
     const li = document.createElement("li");
-    const m = document.createElement("span"); m.className = "mot"; m.textContent = mot;
-    const c = document.createElement("span"); c.className = "cat"; c.textContent = categorie;
-    li.append(m, c);
-    li.onclick = () => li.classList.toggle("choisi");
+    const info = document.createElement("div"); info.className = "info";
+    const t = document.createElement("span"); t.className = "mot"; t.textContent = r.mot;
+    const nb = r.batches.reduce((a, b) => a + b.length, 0);
+    const s = document.createElement("span"); s.className = "sous";
+    s.textContent = r.batches.length + " série" + (r.batches.length > 1 ? "s" : "") + " · " + nb + " idées · " +
+      new Date(r.date || r.id).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    info.append(t, s);
+    const x = document.createElement("button"); x.className = "suppr"; x.textContent = "✕"; x.setAttribute("aria-label", "Supprimer");
+    x.onclick = ev => { ev.stopPropagation(); ecrire("historique", JSON.stringify(lireHisto().filter(z => z.id !== r.id))); afficherHisto(); };
+    li.append(info, x);
+    li.onclick = () => {
+      if (enCours) return;
+      recherche = r; recherche.index = r.batches.length - 1;
+      $("histo").style.display = "none";
+      afficherSerie(); statut("");
+      $("resultats").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
     ul.appendChild(li);
   });
 }
 
-async function lancer(plus) {
-  const mot = plus ? motCourant : $("mot").value.trim();
-  if (!mot) return;
-  if (!lireCle()) { $("reglages").style.display = "block"; statut("Ajoute d'abord ta clé dans ⚙", true); return; }
-  if (!plus) { motCourant = mot; dejaVus = []; $("liste").innerHTML = ""; $("encore").style.display = "none"; }
-  $("btn-go").disabled = true; $("encore").disabled = true;
-  statut("Recherche d'idées…");
-  try {
-    const items = await demanderIdees(mot, dejaVus);
-    dejaVus = dejaVus.concat(items.map(i => i.mot));
-    afficher(items);
-    statut(items.length ? "Touche un mot pour le mettre de côté." : "Aucune idée trouvée, réessaie.");
-    $("encore").style.display = items.length ? "block" : "none";
-  } catch (e) {
-    const hors = !navigator.onLine || e instanceof TypeError;
-    statut(hors ? "Pas de connexion internet." : e.message, true);
-  } finally {
-    $("btn-go").disabled = false; $("encore").disabled = false;
-  }
-}
-
-$("form").onsubmit = e => { e.preventDefault(); $("mot").blur(); lancer(false); };
-$("encore").onclick = () => lancer(true);
+$("form").onsubmit = e => { e.preventDefault(); $("mot").blur(); lancer(true); };
+$("encore").onclick = () => lancer(false);
+$("prec").onclick = () => changerSerie(-1);
+$("suiv").onclick = () => changerSerie(1);
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
