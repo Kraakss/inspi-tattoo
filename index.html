@@ -171,17 +171,22 @@ if (!lireCle()) $("reglages").style.display = "block";
 // ---------- Appel IA (réponse en flux : les mots arrivent un par un) ----------
 function construirePrompt(mot, exclus) {
   let p = `Une tatoueuse cherche l'inspiration pour dessiner : « ${mot} » (un concept, un animal, un objet…).
-Méthode : repère d'abord les facettes du sujet (son sens, son caractère, ses comportements, son habitat, ses émotions, ses symboles, sa dimension philosophique ou spirituelle, son image culturelle, son contraire), puis propose 20 éléments concrets et dessinables qui se rattachent à ces facettes.
+Propose 24 éléments concrets et dessinables, tous reliés au sujet par un lien PRÉCIS et VÉRIFIABLE.
+
+Méthode : repère les facettes réelles du sujet, puis tire chaque élément d'une facette.
+- Sujet concret (plante, animal, objet, lieu…) : ses parties, ses stades de vie, son milieu, les êtres vivants qui lui sont liés (qui le mangent, l'habitent, le pollinisent…), ses usages, et surtout ses traditions réelles (mythologie, folklore, religion, histoire, art) où il apparaît.
+- Sujet abstrait (émotion, valeur, idée…) : ses manifestations, ses contraires, et les symboles reconnus qui l'incarnent dans les cultures.
+
 Règles :
-- BEAU À TATOUER : chaque élément doit faire un beau tatouage, avec une silhouette forte et reconnaissable et une charge symbolique ou poétique (animaux, plantes, fleurs, astres, créatures et figures mythologiques, symboles anciens, objets chargés de sens, éléments naturels, architectures emblématiques). INTERDIT : les métiers, les personnes, les objets banals ou techniques, les marques, les notions abstraites impossibles à dessiner. Exemple : pour « herbe », pas « jardinier » mais « pissenlit en graines » ou « faucille ».
-- PROFONDEUR : au moins 6 éléments portent un sens philosophique, spirituel ou mythologique (cycle, dualité, renaissance, passage du temps, équilibre, fragilité, sacrifice, quête…).
-- RAPPORT OBLIGATOIRE : chaque élément partage une qualité précise avec le sujet (un trait, un comportement, un symbole, une émotion). Le lien peut être indirect ou symbolique, jamais inexistant ni vague.
-- COHÉRENCE : le champ "lien" doit parler de l'élément choisi lui-même et dire ce qu'il a en commun avec le sujet. Vérifie chaque ligne : si le lien pourrait s'appliquer à n'importe quel autre élément, ou s'il ne parle pas de cet élément, il est mauvais : change d'élément.
-- Dosage : 4 liens directs et évidents, 10 liens symboliques ou culturels, 6 liens plus lointains mais qui reposent sur une qualité précise, jamais sur une simple ambiance.
-- Variété : au moins 14 catégories différentes (nature, mythologie, astronomie, marine, architecture, musique, histoire, sciences, symboles anciens, météo, alchimie, jeux…).
-- "mot" : l'élément, 1 à 3 mots en français, sans doublon. "categorie" : 1 ou 2 mots. "lien" : en 5 à 12 mots, ce que cet élément a en commun avec le sujet (de préférence son sens symbolique).`;
+- UN SEUL SAUT : l'élément se rattache directement au sujet. Aucune chaîne d'associations (A évoque B qui évoque C). Un client doit comprendre le lien sans explication.
+- FAITS RÉELS : appuie-toi sur de vrais faits (botanique, zoologie, mythes, traditions, histoire, symbolique reconnue). N'invente jamais une symbolique. Sans lien précis, ne propose pas l'élément. Exemple pour « noisette » : écureuil, noisetier en fleurs, baguette de sourcier, saumon de la sagesse (légende celte) sont valables ; coffre au trésor ou stalactite ne le sont pas.
+- BEAU À TATOUER : silhouette forte et reconnaissable, charge symbolique ou poétique (animaux, plantes, fleurs, astres, créatures et figures mythologiques, symboles anciens, objets chargés de sens, éléments naturels, architectures emblématiques). INTERDIT : métiers, personnes, objets banals ou techniques, marques, notions abstraites impossibles à dessiner.
+- PROFONDEUR : au moins 6 éléments portent un sens philosophique, spirituel ou mythologique réel (cycle, dualité, renaissance, passage du temps, équilibre, fragilité, quête…).
+- DOSAGE : au moins 12 liens directs, le reste en symboles reconnus ; 3 échos poétiques d'une qualité précise au maximum.
+- VARIÉTÉ : plusieurs domaines et au moins 10 catégories différentes, mais seulement quand le lien est réel.
+- "mot" : l'élément, 1 à 3 mots en français, sans doublon. "categorie" : 1 ou 2 mots. "lien" : le fait précis qui relie l'élément au sujet (5 à 12 mots), il doit parler de cet élément. "force" : note honnête du lien, 3 = direct ou tradition réelle, 2 = symbole reconnu, 1 = lien faible ou lointain (vise zéro "1").`;
   if (exclus.length) p += `\n- Ne répète pas : ${exclus.join(", ")}.`;
-  p += `\nRéponds uniquement par un tableau JSON, clés dans cet ordre : [{"mot":"...","categorie":"...","lien":"..."}]`;
+  p += `\nRéponds uniquement par un tableau JSON, clés dans cet ordre : [{"mot":"...","categorie":"...","lien":"...","force":3}]`;
   return p;
 }
 
@@ -203,7 +208,7 @@ async function lireFlux(rep, onItem) {
         try {
           const o = JSON.parse(m[0]);
           if (typeof o.mot === "string" && o.mot.trim())
-            onItem({ mot: o.mot.trim(), categorie: String(o.categorie || "").trim(), lien: String(o.lien || "").trim() });
+            onItem({ mot: o.mot.trim(), categorie: String(o.categorie || "").trim(), lien: String(o.lien || "").trim(), force: Number(o.force) || 0 });
         } catch (e) {}
       }
     }
@@ -235,7 +240,7 @@ async function lireFlux(rep, onItem) {
 async function streamIdees(mot, exclus, onItem) {
   let derniere = 0;
   for (const modele of listeModeles()) {
-    const gen = { temperature: 0.9, maxOutputTokens: 2200, responseMimeType: "application/json" };
+    const gen = { temperature: 0.7, maxOutputTokens: 3000, responseMimeType: "application/json" };
     if (modele === "gemini-2.5-flash") gen.thinkingConfig = { thinkingBudget: 0 };
     const rep = await fetch(URL_API + modele + ":streamGenerateContent?alt=sse", {
       method: "POST",
@@ -343,7 +348,9 @@ async function lancer(nouvelle) {
     await streamIdees(mot, exclus, item => {
       const cle = item.mot.toLowerCase();
       if (!item.mot || vus.has(cle)) return;
+      if ((item.force && item.force < 2) || lot.length >= 20) return;   // lien faible écarté
       vus.add(cle);
+      delete item.force;
       item.choisi = false;
       lot.push(item);
       ajouterCarte(item);
