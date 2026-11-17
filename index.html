@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f0d0c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Inspi Tattoo</title>
+<style>
+  :root { --fond:#0f0d0c; --carte:#1b1816; --texte:#f1e9dc; --doux:#9d9183; --or:#c9a35b; --bord:#2e2925; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--fond); color:var(--texte); font-family:Georgia,"Times New Roman",serif;
+         min-height:100vh; padding:env(safe-area-inset-top) 16px 40px; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:18px 0 6px; }
+  h1 { font-size:1.5rem; font-weight:normal; letter-spacing:.08em; margin:0; color:var(--or); }
+  #btn-reglages { background:none; border:none; color:var(--doux); font-size:1.5rem; padding:8px; }
+  .sous-titre { color:var(--doux); font-size:.95rem; margin:0 0 18px; }
+  form { display:flex; gap:8px; }
+  input[type=text], input[type=password] { flex:1; min-width:0; background:var(--carte); border:1px solid var(--bord);
+         color:var(--texte); border-radius:12px; padding:14px; font-size:1.1rem; font-family:inherit; }
+  input:focus { outline:none; border-color:var(--or); }
+  button.principal { background:var(--or); color:#1a1508; border:none; border-radius:12px; padding:0 20px;
+         font-size:1rem; font-weight:bold; font-family:inherit; }
+  button.principal:disabled { opacity:.5; }
+  #statut { color:var(--doux); text-align:center; margin:22px 0; min-height:1.4em; }
+  #statut.erreur { color:#e0806f; }
+  ul { list-style:none; padding:0; margin:14px 0; display:grid; gap:8px; }
+  li { background:var(--carte); border:1px solid var(--bord); border-radius:12px; padding:12px 14px;
+       display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  li.choisi { border-color:var(--or); background:#26201a; }
+  .mot { font-size:1.2rem; }
+  .cat { font-size:.78rem; color:var(--or); border:1px solid var(--bord); border-radius:99px; padding:3px 10px; white-space:nowrap; }
+  #encore { display:none; width:100%; margin-top:6px; background:none; color:var(--or); border:1px solid var(--or);
+            border-radius:12px; padding:14px; font-size:1rem; font-family:inherit; }
+  #reglages { display:none; background:var(--carte); border:1px solid var(--bord); border-radius:12px; padding:14px; margin-bottom:16px; }
+  #reglages label { display:block; color:var(--doux); font-size:.9rem; margin-bottom:8px; }
+  #reglages .ligne { display:flex; gap:8px; }
+  .aide { color:var(--doux); font-size:.8rem; margin:10px 0 0; line-height:1.4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>INSPI TATTOO</h1>
+  <button id="btn-reglages" aria-label="Réglages">⚙</button>
+</header>
+<p class="sous-titre">Un mot, des idées de dessins venues de partout.</p>
+
+<div id="reglages">
+  <label for="cle">Clé Gemini gratuite (à saisir une seule fois, reste sur ce téléphone)</label>
+  <div class="ligne">
+    <input type="password" id="cle" placeholder="AIza..." autocomplete="off">
+    <button class="principal" id="btn-cle" type="button">OK</button>
+  </div>
+  <p class="aide">Gratuite : aistudio.google.com/apikey</p>
+</div>
+
+<form id="form">
+  <input type="text" id="mot" placeholder="force, courage, sagesse…" autocomplete="off" autocapitalize="none" enterkeyhint="search">
+  <button class="principal" id="btn-go" type="submit">Chercher</button>
+</form>
+
+<div id="statut"></div>
+<ul id="liste"></ul>
+<button id="encore">Encore des idées</button>
+
+<script>
+const MODELES = ["gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
+const $ = id => document.getElementById(id);
+let motCourant = "";
+let dejaVus = [];
+
+// ---------- Clé API ----------
+function lireCle() { try { return localStorage.getItem("cle_api") || ""; } catch (e) { return ""; } }
+function ecrireCle(v) { try { localStorage.setItem("cle_api", v); } catch (e) {} }
+
+$("btn-reglages").onclick = () => {
+  const r = $("reglages");
+  r.style.display = r.style.display === "block" ? "none" : "block";
+};
+$("btn-cle").onclick = () => {
+  const v = $("cle").value.trim();
+  if (v) { ecrireCle(v); $("cle").value = ""; $("reglages").style.display = "none"; statut("Clé enregistrée ✔"); }
+};
+if (!lireCle()) $("reglages").style.display = "block";
+
+// ---------- Appel IA ----------
+function construirePrompt(mot, exclus) {
+  let p = `Une tatoueuse cherche l'inspiration pour dessiner le concept : « ${mot} ».
+Donne 20 éléments concrets (objets, animaux, plantes, lieux, symboles, phénomènes…) que l'on peut dessiner et qui se rapprochent de ce concept, de près ou de loin.
+
+Règles :
+- Maximum 3 éléments évidents (ceux auxquels tout le monde pense). Le reste doit surprendre, tout en restant justifiable.
+- Pioche dans un maximum de domaines différents : nature, animaux, mythologie, architecture, cuisine, marine, astronomie, métiers, sport, musique, histoire, sciences, objets du quotidien, outils, météo, jeux, etc. Au moins 14 catégories différentes sur les 20 éléments.
+- Chaque élément = un mot ou une courte expression (3 mots maximum), en français, sans doublon.
+- La catégorie = 1 ou 2 mots.`;
+  if (exclus.length) p += `\n- Ne répète surtout pas ceux-ci : ${exclus.join(", ")}.`;
+  p += `\n\nRéponds UNIQUEMENT avec un tableau JSON, sans aucun autre texte :
+[{"mot":"...","categorie":"..."}]`;
+  return p;
+}
+
+function extraireListe(texte) {
+  const debut = texte.indexOf("["), fin = texte.lastIndexOf("]");
+  if (debut === -1 || fin === -1) throw new Error("Réponse illisible");
+  const data = JSON.parse(texte.slice(debut, fin + 1));
+  return data
+    .filter(x => x && typeof x.mot === "string" && x.mot.trim())
+    .map(x => ({ mot: x.mot.trim(), categorie: String(x.categorie || "").trim() }));
+}
+
+async function appelModele(modele, mot, exclus) {
+  const rep = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modele + ":generateContent", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": lireCle() },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: construirePrompt(mot, exclus) }] }],
+      generationConfig: { temperature: 1, maxOutputTokens: 2000, responseMimeType: "application/json",
+                          thinkingConfig: { thinkingBudget: 0 } }
+    })
+  });
+  return rep;
+}
+
+async function demanderIdees(mot, exclus) {
+  let derniere = null;
+  for (const modele of MODELES) {
+    let rep = await appelModele(modele, mot, exclus);
+    if (rep.status === 400 || rep.status === 403) {
+      // clé refusée ou option non supportée : on le dit clairement si c'est la clé
+      const txt = await rep.text();
+      if (/API key|API_KEY/i.test(txt)) throw new Error("Clé refusée. Vérifie-la dans ⚙.");
+      derniere = rep; continue;
+    }
+    if (rep.status === 404 || rep.status === 429 || rep.status >= 500) { derniere = rep; continue; }
+    if (!rep.ok) throw new Error("Erreur du service (" + rep.status + ")");
+    const json = await rep.json();
+    const parts = (json.candidates && json.candidates[0] && json.candidates[0].content && json.candidates[0].content.parts) || [];
+    const texte = parts.map(p => p.text || "").join("");
+    return extraireListe(texte);
+  }
+  if (derniere && derniere.status === 429) throw new Error("Limite gratuite atteinte pour le moment, réessaie dans une minute.");
+  throw new Error("Service indisponible (" + (derniere ? derniere.status : "?") + ")");
+}
+
+// ---------- Affichage ----------
+function statut(msg, erreur) { const s = $("statut"); s.textContent = msg || ""; s.className = erreur ? "erreur" : ""; }
+
+function afficher(items) {
+  const ul = $("liste");
+  items.forEach(({ mot, categorie }) => {
+    const li = document.createElement("li");
+    const m = document.createElement("span"); m.className = "mot"; m.textContent = mot;
+    const c = document.createElement("span"); c.className = "cat"; c.textContent = categorie;
+    li.append(m, c);
+    li.onclick = () => li.classList.toggle("choisi");
+    ul.appendChild(li);
+  });
+}
+
+async function lancer(plus) {
+  const mot = plus ? motCourant : $("mot").value.trim();
+  if (!mot) return;
+  if (!lireCle()) { $("reglages").style.display = "block"; statut("Ajoute d'abord ta clé dans ⚙", true); return; }
+  if (!plus) { motCourant = mot; dejaVus = []; $("liste").innerHTML = ""; $("encore").style.display = "none"; }
+  $("btn-go").disabled = true; $("encore").disabled = true;
+  statut("Recherche d'idées…");
+  try {
+    const items = await demanderIdees(mot, dejaVus);
+    dejaVus = dejaVus.concat(items.map(i => i.mot));
+    afficher(items);
+    statut(items.length ? "Touche un mot pour le mettre de côté." : "Aucune idée trouvée, réessaie.");
+    $("encore").style.display = items.length ? "block" : "none";
+  } catch (e) {
+    const hors = !navigator.onLine || e instanceof TypeError;
+    statut(hors ? "Pas de connexion internet." : e.message, true);
+  } finally {
+    $("btn-go").disabled = false; $("encore").disabled = false;
+  }
+}
+
+$("form").onsubmit = e => { e.preventDefault(); $("mot").blur(); lancer(false); };
+$("encore").onclick = () => lancer(true);
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
