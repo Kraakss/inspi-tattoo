@@ -33,6 +33,8 @@
   li.entree { animation:monte .35s ease both; }
   li.choisi { border-color:var(--or); background:#26201a; }
   .mot { font-size:1.2rem; }
+  .txt { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .lien { font-size:.8rem; color:var(--doux); font-style:italic; line-height:1.25; }
   .cat { font-size:.78rem; color:var(--or); border:1px solid var(--bord); border-radius:99px; padding:3px 10px; white-space:nowrap; }
   @keyframes monte { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
 
@@ -169,13 +171,14 @@ if (!lireCle()) $("reglages").style.display = "block";
 // ---------- Appel IA (réponse en flux : les mots arrivent un par un) ----------
 function construirePrompt(mot, exclus) {
   let p = `Une tatoueuse cherche l'inspiration pour dessiner le concept : « ${mot} ».
-Donne 20 éléments concrets et dessinables (objets, animaux, plantes, lieux, symboles, phénomènes…) liés à ce concept, de près ou de loin.
+Méthode : repère d'abord les facettes du concept (son sens, ses émotions, ses symboles, son image culturelle, son contraire), puis propose 20 éléments concrets et dessinables (objets, animaux, plantes, lieux, symboles, phénomènes…) qui se rattachent à ces facettes.
 Règles :
-- 3 évidents maximum, le reste doit surprendre tout en restant justifiable.
-- Un maximum de domaines différents (nature, mythologie, architecture, cuisine, marine, astronomie, métiers, sport, musique, histoire, sciences, objets du quotidien, outils, météo, jeux…), au moins 14 catégories différentes.
-- Chaque élément : 1 à 3 mots en français, sans doublon. Catégorie : 1 ou 2 mots.`;
+- RAPPORT OBLIGATOIRE : chaque élément a un lien réel avec une facette du concept, explicable en une courte phrase à un client. Un élément sans lien clair est interdit : remplace-le. Le lien peut être indirect ou symbolique, jamais inexistant.
+- Dosage : 4 liens directs et évidents, 10 liens symboliques ou culturels, 6 liens plus lointains mais justifiables.
+- Variété : au moins 14 catégories différentes (nature, mythologie, architecture, cuisine, marine, astronomie, métiers, sport, musique, histoire, sciences, objets du quotidien, outils, météo, jeux…).
+- "lien" : pourquoi cet élément évoque le concept (4 à 9 mots). "mot" : 1 à 3 mots en français, sans doublon. "categorie" : 1 ou 2 mots.`;
   if (exclus.length) p += `\n- Ne répète pas : ${exclus.join(", ")}.`;
-  p += `\nRéponds uniquement par un tableau JSON : [{"mot":"...","categorie":"..."}]`;
+  p += `\nRéponds uniquement par un tableau JSON, clés dans cet ordre : [{"lien":"...","mot":"...","categorie":"..."}]`;
   return p;
 }
 
@@ -186,7 +189,7 @@ function listeModeles() {
 
 async function lireFlux(rep, onItem) {
   let texte = "", fait = 0;
-  const re = /\{\s*"mot"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"categorie"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g;
+  const re = /\{[^{}]*\}/g;
   const extraire = () => {
     re.lastIndex = 0;
     let m, n = 0;
@@ -194,7 +197,11 @@ async function lireFlux(rep, onItem) {
       n++;
       if (n > fait) {
         fait = n;
-        try { onItem({ mot: JSON.parse('"' + m[1] + '"').trim(), categorie: JSON.parse('"' + m[2] + '"').trim() }); } catch (e) {}
+        try {
+          const o = JSON.parse(m[0]);
+          if (typeof o.mot === "string" && o.mot.trim())
+            onItem({ mot: o.mot.trim(), categorie: String(o.categorie || "").trim(), lien: String(o.lien || "").trim() });
+        } catch (e) {}
       }
     }
   };
@@ -225,7 +232,7 @@ async function lireFlux(rep, onItem) {
 async function streamIdees(mot, exclus, onItem) {
   let derniere = 0;
   for (const modele of listeModeles()) {
-    const gen = { temperature: 1, maxOutputTokens: 1500, responseMimeType: "application/json" };
+    const gen = { temperature: 0.9, maxOutputTokens: 2200, responseMimeType: "application/json" };
     if (modele === "gemini-2.5-flash") gen.thinkingConfig = { thinkingBudget: 0 };
     const rep = await fetch(URL_API + modele + ":streamGenerateContent?alt=sse", {
       method: "POST",
@@ -252,9 +259,12 @@ function statut(msg, erreur) { const s = $("statut"); s.textContent = msg || "";
 function creerCarte(item) {
   const li = document.createElement("li");
   li.className = "entree" + (item.choisi ? " choisi" : "");
+  const t = document.createElement("div"); t.className = "txt";
   const m = document.createElement("span"); m.className = "mot"; m.textContent = item.mot;
+  t.appendChild(m);
+  if (item.lien) { const l = document.createElement("span"); l.className = "lien"; l.textContent = item.lien; t.appendChild(l); }
   const c = document.createElement("span"); c.className = "cat"; c.textContent = item.categorie;
-  li.append(m, c);
+  li.append(t, c);
   li.onclick = () => { item.choisi = !item.choisi; li.classList.toggle("choisi", item.choisi); sauver(); };
   return li;
 }
